@@ -1,3 +1,22 @@
+"""pysmbus - A ure Python implementation of the I2C SMBus protocol."""
+# Copyright (C) 2015  Bjorn Tillenius <bjorn@tilenius.me>
+#
+# This library is free software; you can redistribute it and/or
+# # modify it under the terms of the GNU Library General Public
+# License as published by the Free Software Foundation;
+# version 2 of the License.
+# 
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Library General Public License for more details.
+
+# You should have received a copy of the GNU Library General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA  02110-1301  USA
+
+
 import posix
 import struct
 from fcntl import ioctl
@@ -18,7 +37,7 @@ class i2c_smbus_msg(Structure):
     _fields_ = [
         ('read_write', c_uint8),  # Should be c_char, but c_uint8 is the
                                   # same size is makes it easier to
-                                  # support both Python 2.7 an 3.x.
+                                  # support both Python 2.7 and 3.x.
         ('command', c_uint8),
         ('size', c_int),
         ('data', LP_c_uint8)]
@@ -36,21 +55,23 @@ class SMBus(object):
         if self.addr != addr:
             ioctl(self.fd, I2C_SLAVE, addr);
 
-    def write_byte_data(self, i2c_addr, cmd, value):
+    def write_byte_data(self, i2c_addr, register, value):
+        """Write a single byte to a designated register."""
         self._set_addr(i2c_addr)
         byte_value = c_uint8(value)
         data_pointer = LP_c_uint8(byte_value)
         msg = i2c_smbus_msg(
-            read_write=I2C_SMBUS_WRITE, command=cmd, size=I2C_SMBUS_BYTE_DATA,
-            data=data_pointer)
+            read_write=I2C_SMBUS_WRITE, command=register,
+            size=I2C_SMBUS_BYTE_DATA, data=data_pointer)
         ioctl(self.fd, I2C_SMBUS, msg)
 
-    def read_byte_data(self, i2c_addr, cmd):
+    def read_byte_data(self, i2c_addr, register):
+        """Read a single byte from a designated register."""
         self._set_addr(i2c_addr)
         data_pointer = LP_c_uint8(c_uint8())
         msg = i2c_smbus_msg(
-            read_write=I2C_SMBUS_READ, command=cmd, size=I2C_SMBUS_BYTE_DATA,
-            data=data_pointer)
+            read_write=I2C_SMBUS_READ, command=register,
+            size=I2C_SMBUS_BYTE_DATA, data=data_pointer)
         ioctl(self.fd, I2C_SMBUS, msg)
         [result] = struct.unpack("@b", data_pointer.contents)
         return result
